@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package V1;
+
+option go_package = "/V1;pbs";
+
+message CommandRequest {
+    string name = 1;
+    repeated string args = 2;
+}
+
+enum Result {
+    INFO = 0;
+    ERROR = 1;
+    WARNING = 2;
+}
+
+message CommandResponse {
+    Result type = 1;
+    bytes output = 2;
+}
+
+service Remote {
+    rpc Execute(CommandRequest) returns (CommandResponse) {};
+}
