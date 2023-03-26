@@ -20,6 +20,16 @@ message CommandResponse {
     bytes output = 2;
 }
 
+message LoginResponse {
+    string url = 1;
+    string code = 2;
+    string jwt = 3;
+}
+
+message LoginRequest {
+}
+
 service Remote {
+    rpc Login(LoginRequest) returns (LoginResponse){};
     rpc Execute(CommandRequest) returns (CommandResponse) {};
 }

@@ -2,12 +2,12 @@
 
 - [x] Create Repository
 - [ ] Cobra CLI ( client )
-- [ ] Commands
+- [x] Commands
 - [ ] Dockerfile
-- [ ] Communication Protocol
+- [x] Communication Protocol
 - [ ] GRPC server
 - [ ] VS istio
-- [ ] Oauth Device Flow
+- [x] Oauth Device Flow
 - [ ] Login commands
 - [ ] Documentation
 - [ ] Test

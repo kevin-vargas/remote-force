@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RemoteClient interface {
+	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 	Execute(ctx context.Context, in *CommandRequest, opts ...grpc.CallOption) (*CommandResponse, error)
 }
 
@@ -31,6 +32,15 @@ type remoteClient struct {
 
 func NewRemoteClient(cc grpc.ClientConnInterface) RemoteClient {
 	return &remoteClient{cc}
+}
+
+func (c *remoteClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error) {
+	out := new(LoginResponse)
+	err := c.cc.Invoke(ctx, "/V1.Remote/Login", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *remoteClient) Execute(ctx context.Context, in *CommandRequest, opts ...grpc.CallOption) (*CommandResponse, error) {
@@ -46,6 +56,7 @@ func (c *remoteClient) Execute(ctx context.Context, in *CommandRequest, opts ...
 // All implementations must embed UnimplementedRemoteServer
 // for forward compatibility
 type RemoteServer interface {
+	Login(context.Context, *LoginRequest) (*LoginResponse, error)
 	Execute(context.Context, *CommandRequest) (*CommandResponse, error)
 	mustEmbedUnimplementedRemoteServer()
 }
@@ -54,6 +65,9 @@ type RemoteServer interface {
 type UnimplementedRemoteServer struct {
 }
 
+func (UnimplementedRemoteServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
+}
 func (UnimplementedRemoteServer) Execute(context.Context, *CommandRequest) (*CommandResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Execute not implemented")
 }
@@ -68,6 +82,24 @@ type UnsafeRemoteServer interface {
 
 func RegisterRemoteServer(s grpc.ServiceRegistrar, srv RemoteServer) {
 	s.RegisterService(&Remote_ServiceDesc, srv)
+}
+
+func _Remote_Login_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LoginRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RemoteServer).Login(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/V1.Remote/Login",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RemoteServer).Login(ctx, req.(*LoginRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Remote_Execute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -95,6 +127,10 @@ var Remote_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "V1.Remote",
 	HandlerType: (*RemoteServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Login",
+			Handler:    _Remote_Login_Handler,
+		},
 		{
 			MethodName: "Execute",
 			Handler:    _Remote_Execute_Handler,

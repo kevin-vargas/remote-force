@@ -26,7 +26,8 @@ func main() {
 
 	c := pb.NewRemoteClient(conn)
 
-	doExec(c)
+	// doExec(c)
+	doLogin(c)
 }
 
 func doExec(c pb.RemoteClient) {
@@ -42,4 +43,18 @@ func doExec(c pb.RemoteClient) {
 
 	fmt.Println(res.Type)
 	fmt.Println(string(res.Output))
+}
+
+func doLogin(c pb.RemoteClient) {
+
+	res, err := c.Login(context.Background(), &pb.LoginRequest{})
+
+	if err != nil {
+		log.Fatalf("Failed on call %v\n", err)
+		return
+	}
+
+	fmt.Println(res.Code)
+	fmt.Println(res.Url)
+	fmt.Println(res.Jwt)
 }
