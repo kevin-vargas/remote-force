@@ -8,30 +8,26 @@ import (
 	pb "remote-force/pb/V1"
 	"remote-force/server/jwt"
 	"remote-force/server/oauthdevice"
+	"remote-force/server/store"
 
 	"github.com/google/uuid"
-	"golang.org/x/oauth2"
 )
 
-type Store interface {
-	Save(id string, v *oauth2.Token) error
-}
-
-func New(cmds []string, m *jwt.Manager, store Store, o *oauthdevice.Config) pb.RemoteServer {
+func New(cmds []string, m *jwt.Manager, s store.Token, o *oauthdevice.Config) pb.RemoteServer {
 	serverCmds := make(map[string]any)
 	for _, e := range cmds {
 		serverCmds[e] = true
 	}
 	return &server{
 		oauth:      o,
-		store:      store,
+		tokenStore: s,
 		cmds:       serverCmds,
 		jwtManager: m,
 	}
 }
 
 type server struct {
-	store      Store
+	tokenStore store.Token
 	oauth      *oauthdevice.Config
 	jwtManager *jwt.Manager
 	cmds       map[string]any
@@ -89,7 +85,7 @@ func (s *server) PollToken(ctx context.Context, id string, od *oauthdevice.Devic
 		fmt.Println(err.Error())
 		return
 	}
-	if err = s.store.Save(id, t); err != nil {
+	if err = s.tokenStore.Save(id, t); err != nil {
 		fmt.Println("on save")
 		fmt.Println(err.Error())
 		return
