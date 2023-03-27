@@ -1,13 +1,17 @@
 ### TODO
 
 - [x] Create Repository
-- [ ] Cobra CLI ( client )
+- [x] Interactive Client
 - [x] Commands
 - [ ] Dockerfile
 - [x] Communication Protocol
-- [ ] GRPC server
+- [x] GRPC server
 - [ ] VS istio
 - [x] Oauth Device Flow
-- [ ] Login commands
+- [x] Login commands
 - [ ] Documentation
 - [ ] Test
+- [ ] Block client until poll finish on server
+- [ ] exit on execute command
+- [ ] custom icon on execute command
+- [ ] fix long commands like ping

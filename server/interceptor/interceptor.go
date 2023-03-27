@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	login_method = "/V1.Remote/Login"
+	login_method    = "/V1.Remote/Login"
+	commands_method = "/V1.Remote/Commands"
 )
 
 func excludeMethods(methods []string) func(grpc.UnaryServerInterceptor) grpc.UnaryServerInterceptor {
@@ -23,4 +24,4 @@ func excludeMethods(methods []string) func(grpc.UnaryServerInterceptor) grpc.Una
 	}
 }
 
-var excludeLogin = excludeMethods([]string{login_method})
+var excludePublicMethods = excludeMethods([]string{login_method, commands_method})

@@ -4,7 +4,7 @@ package V1;
 
 option go_package = "/V1;pbs";
 
-message CommandRequest {
+message ExecuteRequest {
     string name = 1;
     repeated string args = 2;
 }
@@ -15,7 +15,7 @@ enum Result {
     WARNING = 2;
 }
 
-message CommandResponse {
+message ExecuteResponse {
     Result type = 1;
     bytes output = 2;
 }
@@ -29,7 +29,15 @@ message LoginResponse {
 message LoginRequest {
 }
 
+message CommandsRequest {
+}
+
+message CommandsResponse {
+    repeated string Commands = 1;
+}
+
 service Remote {
     rpc Login(LoginRequest) returns (LoginResponse){};
-    rpc Execute(CommandRequest) returns (CommandResponse) {};
+    rpc Execute(ExecuteRequest) returns (ExecuteResponse) {};
+    rpc Commands(CommandsRequest) returns(CommandsResponse) {};
 }

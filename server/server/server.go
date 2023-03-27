@@ -36,9 +36,9 @@ type server struct {
 
 // TODO: improve error handler
 // TODO: add log invalid command and execute command
-func (s *server) Execute(ctx context.Context, cmdReq *pb.CommandRequest) (*pb.CommandResponse, error) {
+func (s *server) Execute(ctx context.Context, cmdReq *pb.ExecuteRequest) (*pb.ExecuteResponse, error) {
 	if _, ok := s.cmds[cmdReq.Name]; !ok {
-		return &pb.CommandResponse{
+		return &pb.ExecuteResponse{
 			Type:   pb.Result_WARNING,
 			Output: []byte(fmt.Sprintf("invalid command %s", cmdReq.Name)),
 		}, nil
@@ -47,11 +47,10 @@ func (s *server) Execute(ctx context.Context, cmdReq *pb.CommandRequest) (*pb.Co
 	var out bytes.Buffer
 	cmd.Stdout = &out
 
-	err := cmd.Run()
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		return nil, err
 	}
-	return &pb.CommandResponse{
+	return &pb.ExecuteResponse{
 		Type:   pb.Result_INFO,
 		Output: out.Bytes(),
 	}, nil
@@ -74,6 +73,16 @@ func (s *server) Login(ctx context.Context, _ *pb.LoginRequest) (*pb.LoginRespon
 		Url:  o.VerificationURI,
 		Code: o.UserCode,
 		Jwt:  j,
+	}, nil
+}
+
+func (s *server) Commands(ctx context.Context, _ *pb.CommandsRequest) (*pb.CommandsResponse, error) {
+	var cmds []string
+	for k := range s.cmds {
+		cmds = append(cmds, k)
+	}
+	return &pb.CommandsResponse{
+		Commands: cmds,
 	}, nil
 }
 

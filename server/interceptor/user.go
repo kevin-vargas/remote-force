@@ -15,12 +15,12 @@ type UserProvider interface {
 }
 
 func UserInfo(up UserProvider, s store.User) grpc.UnaryServerInterceptor {
-	return excludeLogin(
+	return excludePublicMethods(
 		func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 			if userID, ok := ContextUserID(ctx); ok {
 				user, err := up.GetByID(userID)
 				if err != nil {
-					return nil, status.Errorf(codes.Internal, "Retrieving user information is failed")
+					return nil, status.Errorf(codes.Unauthenticated, "Retrieving user information is failed")
 				}
 				ctx = context.WithValue(ctx, contextKeyUser, user)
 				return handler(ctx, req)

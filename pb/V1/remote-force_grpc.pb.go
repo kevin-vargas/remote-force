@@ -23,7 +23,8 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RemoteClient interface {
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
-	Execute(ctx context.Context, in *CommandRequest, opts ...grpc.CallOption) (*CommandResponse, error)
+	Execute(ctx context.Context, in *ExecuteRequest, opts ...grpc.CallOption) (*ExecuteResponse, error)
+	Commands(ctx context.Context, in *CommandsRequest, opts ...grpc.CallOption) (*CommandsResponse, error)
 }
 
 type remoteClient struct {
@@ -43,9 +44,18 @@ func (c *remoteClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc
 	return out, nil
 }
 
-func (c *remoteClient) Execute(ctx context.Context, in *CommandRequest, opts ...grpc.CallOption) (*CommandResponse, error) {
-	out := new(CommandResponse)
+func (c *remoteClient) Execute(ctx context.Context, in *ExecuteRequest, opts ...grpc.CallOption) (*ExecuteResponse, error) {
+	out := new(ExecuteResponse)
 	err := c.cc.Invoke(ctx, "/V1.Remote/Execute", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *remoteClient) Commands(ctx context.Context, in *CommandsRequest, opts ...grpc.CallOption) (*CommandsResponse, error) {
+	out := new(CommandsResponse)
+	err := c.cc.Invoke(ctx, "/V1.Remote/Commands", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +67,8 @@ func (c *remoteClient) Execute(ctx context.Context, in *CommandRequest, opts ...
 // for forward compatibility
 type RemoteServer interface {
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
-	Execute(context.Context, *CommandRequest) (*CommandResponse, error)
+	Execute(context.Context, *ExecuteRequest) (*ExecuteResponse, error)
+	Commands(context.Context, *CommandsRequest) (*CommandsResponse, error)
 	mustEmbedUnimplementedRemoteServer()
 }
 
@@ -68,8 +79,11 @@ type UnimplementedRemoteServer struct {
 func (UnimplementedRemoteServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
 }
-func (UnimplementedRemoteServer) Execute(context.Context, *CommandRequest) (*CommandResponse, error) {
+func (UnimplementedRemoteServer) Execute(context.Context, *ExecuteRequest) (*ExecuteResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Execute not implemented")
+}
+func (UnimplementedRemoteServer) Commands(context.Context, *CommandsRequest) (*CommandsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Commands not implemented")
 }
 func (UnimplementedRemoteServer) mustEmbedUnimplementedRemoteServer() {}
 
@@ -103,7 +117,7 @@ func _Remote_Login_Handler(srv interface{}, ctx context.Context, dec func(interf
 }
 
 func _Remote_Execute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CommandRequest)
+	in := new(ExecuteRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -115,7 +129,25 @@ func _Remote_Execute_Handler(srv interface{}, ctx context.Context, dec func(inte
 		FullMethod: "/V1.Remote/Execute",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RemoteServer).Execute(ctx, req.(*CommandRequest))
+		return srv.(RemoteServer).Execute(ctx, req.(*ExecuteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Remote_Commands_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CommandsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RemoteServer).Commands(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/V1.Remote/Commands",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RemoteServer).Commands(ctx, req.(*CommandsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -134,6 +166,10 @@ var Remote_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Execute",
 			Handler:    _Remote_Execute_Handler,
+		},
+		{
+			MethodName: "Commands",
+			Handler:    _Remote_Commands_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

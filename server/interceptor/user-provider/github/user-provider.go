@@ -67,6 +67,7 @@ func (p *provider) GetByID(id string) (usr entity.User, err error) {
 
 func New(ts store.Token) interceptor.UserProvider {
 	return &provider{
+		client:     http.DefaultClient,
 		tokenStore: ts,
 	}
 }

@@ -11,7 +11,7 @@ import (
 )
 
 func Authentication(m *jwt.Manager) grpc.UnaryServerInterceptor {
-	return excludeLogin(
+	return excludePublicMethods(
 		func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 			newCTX, err := authorize(ctx, m)
 			if err != nil {
