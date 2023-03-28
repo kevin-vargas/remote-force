@@ -22,7 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RemoteClient interface {
-	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
+	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (Remote_LoginClient, error)
 	Execute(ctx context.Context, in *ExecuteRequest, opts ...grpc.CallOption) (*ExecuteResponse, error)
 	Commands(ctx context.Context, in *CommandsRequest, opts ...grpc.CallOption) (*CommandsResponse, error)
 }
@@ -35,13 +35,36 @@ func NewRemoteClient(cc grpc.ClientConnInterface) RemoteClient {
 	return &remoteClient{cc}
 }
 
-func (c *remoteClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error) {
-	out := new(LoginResponse)
-	err := c.cc.Invoke(ctx, "/V1.Remote/Login", in, out, opts...)
+func (c *remoteClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (Remote_LoginClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Remote_ServiceDesc.Streams[0], "/V1.Remote/Login", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &remoteLoginClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Remote_LoginClient interface {
+	Recv() (*LoginResponse, error)
+	grpc.ClientStream
+}
+
+type remoteLoginClient struct {
+	grpc.ClientStream
+}
+
+func (x *remoteLoginClient) Recv() (*LoginResponse, error) {
+	m := new(LoginResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (c *remoteClient) Execute(ctx context.Context, in *ExecuteRequest, opts ...grpc.CallOption) (*ExecuteResponse, error) {
@@ -66,7 +89,7 @@ func (c *remoteClient) Commands(ctx context.Context, in *CommandsRequest, opts .
 // All implementations must embed UnimplementedRemoteServer
 // for forward compatibility
 type RemoteServer interface {
-	Login(context.Context, *LoginRequest) (*LoginResponse, error)
+	Login(*LoginRequest, Remote_LoginServer) error
 	Execute(context.Context, *ExecuteRequest) (*ExecuteResponse, error)
 	Commands(context.Context, *CommandsRequest) (*CommandsResponse, error)
 	mustEmbedUnimplementedRemoteServer()
@@ -76,8 +99,8 @@ type RemoteServer interface {
 type UnimplementedRemoteServer struct {
 }
 
-func (UnimplementedRemoteServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
+func (UnimplementedRemoteServer) Login(*LoginRequest, Remote_LoginServer) error {
+	return status.Errorf(codes.Unimplemented, "method Login not implemented")
 }
 func (UnimplementedRemoteServer) Execute(context.Context, *ExecuteRequest) (*ExecuteResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Execute not implemented")
@@ -98,22 +121,25 @@ func RegisterRemoteServer(s grpc.ServiceRegistrar, srv RemoteServer) {
 	s.RegisterService(&Remote_ServiceDesc, srv)
 }
 
-func _Remote_Login_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LoginRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+func _Remote_Login_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(LoginRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(RemoteServer).Login(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/V1.Remote/Login",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RemoteServer).Login(ctx, req.(*LoginRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(RemoteServer).Login(m, &remoteLoginServer{stream})
+}
+
+type Remote_LoginServer interface {
+	Send(*LoginResponse) error
+	grpc.ServerStream
+}
+
+type remoteLoginServer struct {
+	grpc.ServerStream
+}
+
+func (x *remoteLoginServer) Send(m *LoginResponse) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _Remote_Execute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -160,10 +186,6 @@ var Remote_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*RemoteServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Login",
-			Handler:    _Remote_Login_Handler,
-		},
-		{
 			MethodName: "Execute",
 			Handler:    _Remote_Execute_Handler,
 		},
@@ -172,6 +194,12 @@ var Remote_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Remote_Commands_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Login",
+			Handler:       _Remote_Login_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "remote-force.proto",
 }

@@ -27,8 +27,16 @@ func red(f string, args ...interface{}) {
 	color.Red(f, args...)
 }
 
-func info(f string, args ...interface{}) {
+func server_info(f string, args ...interface{}) {
 	color.Magenta(f, args...)
+}
+
+func info(f string, args ...interface{}) {
+	color.White(f, args...)
+}
+
+func success(f string, args ...interface{}) {
+	color.Green(f, args...)
 }
 
 var (
@@ -106,24 +114,33 @@ func (s *state) start(ctx context.Context) error {
 }
 
 func (s *state) login(ctx context.Context) error {
-	info("There is no active session")
+	server_info("There is no active session")
 	wantLog := false
 	survey.AskOne(survey_want_login, &wantLog)
 	if !wantLog {
 		red("You must be logged in to continue")
 		return errors.New("user dont want login")
 	}
-	res, err := s.client.Login(ctx, &pb.LoginRequest{})
+	stream, err := s.client.Login(ctx, &pb.LoginRequest{})
 	if err != nil {
 		return fmt.Errorf("failed on call login %v", err)
 	}
-	info("Please log in")
-	info("\tURL:\t%s", res.Url)
-	info("\tCode:\t%s", res.Code)
-	err = s.store.Save(res.Jwt)
+	res, err := stream.Recv()
+	if err != nil {
+		return fmt.Errorf("failed on recv stream login %v", err)
+	}
+	server_info("Please log in")
+	server_info("\tURL:\t%s", res.Oauth.Url)
+	server_info("\tCode:\t%s", res.Oauth.Code)
+	resJWT, err := stream.Recv()
+	if err != nil {
+		return fmt.Errorf("failed on recv stream login %v", err)
+	}
+	err = s.store.Save(resJWT.Jwt)
 	if err != nil {
 		return fmt.Errorf("failed on save jwt token %v", err)
 	}
+	success("Login Successful")
 	return s.start(ctx)
 }
 

@@ -68,23 +68,38 @@ func (s *server) Execute(ctx context.Context, cmdReq *pb.ExecuteRequest) (*pb.Ex
 }
 
 // TODO: validate before no token have client
-func (s *server) Login(ctx context.Context, _ *pb.LoginRequest) (*pb.LoginResponse, error) {
-	// TODO: user an interface to create ids
-	id := uuid.New()
-	j, err := s.jwtManager.Generate(id.String())
-	if err != nil {
-		return nil, err
-	}
+func (s *server) Login(req *pb.LoginRequest, stream pb.Remote_LoginServer) error {
+	ctx := stream.Context()
 	o, err := s.oauth.AuthDevice(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	go s.PollToken(ctx, id.String(), o)
-	return &pb.LoginResponse{
-		Url:  o.VerificationURI,
-		Code: o.UserCode,
-		Jwt:  j,
-	}, nil
+	err = stream.Send(&pb.LoginResponse{
+		Oauth: &pb.Oauth{
+			Url:  o.VerificationURI,
+			Code: o.UserCode,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	// TODO: user an interface to create ids
+	id := uuid.New()
+	err = s.PollToken(ctx, id.String(), o)
+	if err != nil {
+		return err
+	}
+	j, err := s.jwtManager.Generate(id.String())
+	if err != nil {
+		return err
+	}
+	err = stream.Send(&pb.LoginResponse{
+		Jwt: j,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *server) Commands(ctx context.Context, _ *pb.CommandsRequest) (*pb.CommandsResponse, error) {
@@ -97,17 +112,13 @@ func (s *server) Commands(ctx context.Context, _ *pb.CommandsRequest) (*pb.Comma
 	}, nil
 }
 
-func (s *server) PollToken(ctx context.Context, id string, od *oauthdevice.DeviceAuth) {
+func (s *server) PollToken(ctx context.Context, id string, od *oauthdevice.DeviceAuth) error {
 	t, err := s.oauth.Poll(ctx, od)
-	// TODO: log no print
 	if err != nil {
-		fmt.Println("on pull")
-		fmt.Println(err.Error())
-		return
+		return fmt.Errorf("error on pull %w", err)
 	}
 	if err = s.tokenStore.Save(id, t); err != nil {
-		fmt.Println("on save")
-		fmt.Println(err.Error())
-		return
+		return fmt.Errorf("error on save %w", err)
 	}
+	return nil
 }
