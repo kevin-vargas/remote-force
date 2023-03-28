@@ -4,13 +4,17 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"os/exec"
 	pb "remote-force/pb/V1"
+	"remote-force/server/interceptor"
 	"remote-force/server/jwt"
 	"remote-force/server/oauthdevice"
 	"remote-force/server/store"
 
 	"github.com/google/uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func New(cmds []string, m *jwt.Manager, s store.Token, o *oauthdevice.Config) pb.RemoteServer {
@@ -37,12 +41,18 @@ type server struct {
 // TODO: improve error handler
 // TODO: add log invalid command and execute command
 func (s *server) Execute(ctx context.Context, cmdReq *pb.ExecuteRequest) (*pb.ExecuteResponse, error) {
+	usr, ok := interceptor.ContextUser(ctx)
+	if !ok {
+		return nil, status.Errorf(codes.Aborted, "invalid context on execute no user")
+	}
 	if _, ok := s.cmds[cmdReq.Name]; !ok {
+		log.Printf("User: %s, try to invoke invalid command: %s With Args: %+v\n", usr.Email, cmdReq.Name, cmdReq.Args)
 		return &pb.ExecuteResponse{
 			Type:   pb.Result_WARNING,
-			Output: []byte(fmt.Sprintf("invalid command %s", cmdReq.Name)),
+			Output: []byte(fmt.Sprintf("invalid command %s\n", cmdReq.Name)),
 		}, nil
 	}
+
 	cmd := exec.CommandContext(ctx, cmdReq.Name, cmdReq.Args...)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -50,6 +60,7 @@ func (s *server) Execute(ctx context.Context, cmdReq *pb.ExecuteRequest) (*pb.Ex
 	if err := cmd.Run(); err != nil {
 		return nil, err
 	}
+	log.Printf("User: %s, Execute: %s With Args: %+v\n", usr.Email, cmdReq.Name, cmdReq.Args)
 	return &pb.ExecuteResponse{
 		Type:   pb.Result_INFO,
 		Output: out.Bytes(),

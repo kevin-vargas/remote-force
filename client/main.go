@@ -73,7 +73,9 @@ func (s *state) start(ctx context.Context) error {
 	authCTX := authContext(ctx, o)
 	for {
 		var input string
-		survey.AskOne(askUsrInput, &input)
+		survey.AskOne(askUsrInput, &input, survey.WithIcons(func(is *survey.IconSet) {
+			is.Question.Text = "😈"
+		}))
 		inputs := strings.Split(input, " ")
 		if len(inputs) > 0 {
 			name, args := inputs[0], inputs[1:]
@@ -92,7 +94,12 @@ func (s *state) start(ctx context.Context) error {
 				}
 				return err
 			}
-			info(string(res.Output))
+			out := string(res.Output)
+			if res.Type == pb.Result_INFO {
+				info(out)
+			} else {
+				fmt.Println(out)
+			}
 		}
 
 	}

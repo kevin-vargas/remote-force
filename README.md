@@ -13,5 +13,7 @@
 - [ ] Test
 - [ ] Block client until poll finish on server
 - [ ] exit on execute command
-- [ ] custom icon on execute command
+- [x] custom icon on execute command
 - [ ] fix long commands like ping
+- [x] log server side all interactions
+- [x] client identify errors from uknown commands and log them

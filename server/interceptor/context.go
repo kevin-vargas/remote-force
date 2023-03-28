@@ -22,6 +22,6 @@ func ContextUserID(ctx context.Context) (string, bool) {
 }
 
 func ContextUser(ctx context.Context) (entity.User, bool) {
-	usr, ok := ctx.Value(contextKeyUserID).(entity.User)
+	usr, ok := ctx.Value(contextKeyUser).(entity.User)
 	return usr, ok
 }
